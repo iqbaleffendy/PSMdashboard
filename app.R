@@ -12,7 +12,7 @@ library(formattable)
 # Load Dataset----
 service_level <- read_excel("import_data/Service Level.xlsx")
 
-# UI----
+
 ui <- fluidPage(
   
   themeSelector(),
@@ -20,10 +20,14 @@ ui <- fluidPage(
   
   navbarPage(
     title = "PSM Dashboard",
+    position = "fixed-top",
+    selected = "Service Level",
+    tags$style(type="text/css", "body {padding-top: 70px;}"),
     tabPanel(
       title = "Service Level",
       sidebarLayout(
         sidebarPanel(
+          width = 3,
           selectInput(
             inputId = "customercode",
             label = "Select Costumer Code",
@@ -45,26 +49,44 @@ ui <- fluidPage(
           textOutput("cutoffdate")
         ),
         mainPanel(
-          fluidRow(
-            valueBoxOutput("servicelevelpercentage"),
-            valueBoxOutput("servicelevelvalue", width = 5) 
-          ),
-          fluidRow(
-            plotlyOutput("servicelevelplot")
+          width = 9,
+          tabsetPanel(
+            tabPanel(
+              title = "Summary",
+              fluidRow(
+                valueBoxOutput("servicelevelpercentage", width = 5),
+                valueBoxOutput("servicelevelvalue", width = 5) 
+              ),
+              fluidRow(
+                plotlyOutput("servicelevelplot")
+              )
+            ),
+            tabPanel(
+              title = "Dataset",
+              DTOutput("serviceleveldataset")
+            )
           )
         )
       )
     ),
     tabPanel(
-      title = "Menu B"
+      title = "Back Order"
     ),
     tabPanel(
-      title = "Menu C"
+      title = "Source Code",
+      box(
+        title = "Source Code",
+        width = NULL,
+        status = "primary",
+        solidHeader = TRUE,
+        collapsible = FALSE,
+        pre(includeText("app.R"))
+      )
     )
   )
 )
 
-# Define server logic required to draw a histogram
+
 server <- function(input, output) {
   
   # Reactive Expression to Filter Service Level Data----
@@ -95,8 +117,9 @@ server <- function(input, output) {
       select(percentage)
     valueBox(
       paste(round(servicelvlpct, digits = 1), " %"),
-      subtitle = "Service Level Percentage",
-      color = "blue"
+      subtitle = tags$p("Service Level Percentage", style = "font-size: 130%"),
+      color = "light-blue",
+      icon = icon("list")
     )
   })
   
@@ -107,27 +130,47 @@ server <- function(input, output) {
       summarize(totalvalue = sum(Value))
     valueBox(
       paste("Rp", accounting(servicelvlvalue, digits = 0L)),
-      subtitle = "Service Level Value",
-      color = "blue"
+      subtitle = tags$p("Service Level Value", style = "font-size: 130%"),
+      color = "light-blue",
+      icon = icon("list")
     )
   })
   
   # Output Service Level Plot----
   output$servicelevelplot <- renderPlotly({
-    service_level %>% 
-      group_by(Branch) %>% 
-      summarize(sumprocessed = sum(Processed), sumfilled = sum(Filled)) %>% 
-      ungroup() %>% 
-      mutate(Branch = fct_reorder(Branch, sumprocessed, .desc = TRUE)) %>% 
-      plot_ly(x = ~Branch, y = ~sumprocessed, type = "bar", name = "Processed") %>% 
-      add_trace(y = ~sumfilled, name = "Filled") %>% 
-      layout(yaxis = list(title = 'Count'), barmode = 'group')
+    if (input$branchname == "All") {
+      service_level %>% 
+        group_by(Branch) %>% 
+        summarize(sumprocessed = sum(Processed), sumfilled = sum(Filled)) %>% 
+        ungroup() %>% 
+        mutate(Branch = fct_reorder(Branch, sumprocessed, .desc = TRUE)) %>% 
+        plot_ly(x = ~Branch, y = ~sumprocessed, type = "bar", name = "Processed") %>% 
+        add_trace(y = ~sumfilled, name = "Filled") %>% 
+        layout(yaxis = list(title = 'Count'), barmode = 'group')
+    } else {
+      service_level_filtered() %>% 
+        group_by(Customer) %>% 
+        summarize(sumprocessed = sum(Processed), sumfilled = sum(Filled)) %>% 
+        ungroup() %>% 
+        mutate(Customer = fct_reorder(Customer, sumprocessed, .desc = TRUE)) %>% 
+        plot_ly(x = ~Customer, y = ~sumprocessed, type = "bar", name = "Processed") %>% 
+        add_trace(y = ~sumfilled, name = "Filled") %>% 
+        layout(yaxis = list(title = 'Count'), barmode = 'group')
+    }
   })
   
   # Output Cut Off Date----
   output$cutoffdate <- renderText({
     paste(
       "Cut Off Date is ", as.Date(max(service_level$Month))
+    )
+  })
+  
+  # Output Service Level Dataset----
+  output$serviceleveldataset <- renderDT({
+    datatable(
+      service_level_filtered() %>% select(1,3,4,5,7,8,11),
+      class = 'cell-border stripe'
     )
   })
   
