@@ -54,8 +54,18 @@ ui <- fluidPage(
             tabPanel(
               title = "Summary",
               fluidRow(
-                valueBoxOutput("servicelevelpercentage", width = 5),
-                valueBoxOutput("servicelevelvalue", width = 5) 
+                column(
+                 width = 4,
+                 offset = 2,
+                 align = "center",
+                 valueBoxOutput("servicelevelpercentage", width = NULL)
+                ),
+                column(
+                  width = 5,
+                  offset = 0,
+                  align = "center",
+                  valueBoxOutput("servicelevelvalue", width = NULL)
+                )
               ),
               fluidRow(
                 plotlyOutput("servicelevelplot")
@@ -117,7 +127,7 @@ server <- function(input, output) {
       select(percentage)
     valueBox(
       paste(round(servicelvlpct, digits = 1), " %"),
-      subtitle = tags$p("Service Level Percentage", style = "font-size: 130%"),
+      subtitle = tags$p("Service Level Percentage", style = "font-size: 110%"),
       color = "light-blue",
       icon = icon("list")
     )
@@ -130,32 +140,32 @@ server <- function(input, output) {
       summarize(totalvalue = sum(Value))
     valueBox(
       paste("Rp", accounting(servicelvlvalue, digits = 0L)),
-      subtitle = tags$p("Service Level Value", style = "font-size: 130%"),
+      subtitle = tags$p("Service Level Value", style = "font-size: 110%"),
       color = "light-blue",
       icon = icon("list")
     )
   })
   
+  # Function for Service Level Plot----
+  servicelevelplot <- function(data, group) {
+    data %>% 
+      group_by({{group}}) %>% 
+      summarize(sumprocessed = sum(Processed), sumfilled = sum(Filled)) %>% 
+      ungroup() %>% 
+      mutate(group = fct_reorder({{group}}, sumprocessed, .desc = TRUE)) %>% 
+      plot_ly(x = ~group, y = ~sumprocessed, type = "bar", name = "Processed") %>% 
+      add_trace(y = ~sumfilled, name = "Filled") %>% 
+      layout(yaxis = list(title = 'Count'), barmode = 'group') %>%
+      layout(xaxis = list(title = 'Branch/Customer')) %>% 
+      layout(legend = list(x = 0.8, y = 0.8, bgcolor = "#E2E2E2"))
+  }
+  
   # Output Service Level Plot----
   output$servicelevelplot <- renderPlotly({
     if (input$branchname == "All") {
-      service_level %>% 
-        group_by(Branch) %>% 
-        summarize(sumprocessed = sum(Processed), sumfilled = sum(Filled)) %>% 
-        ungroup() %>% 
-        mutate(Branch = fct_reorder(Branch, sumprocessed, .desc = TRUE)) %>% 
-        plot_ly(x = ~Branch, y = ~sumprocessed, type = "bar", name = "Processed") %>% 
-        add_trace(y = ~sumfilled, name = "Filled") %>% 
-        layout(yaxis = list(title = 'Count'), barmode = 'group')
+      servicelevelplot(service_level, Branch)
     } else {
-      service_level_filtered() %>% 
-        group_by(Customer) %>% 
-        summarize(sumprocessed = sum(Processed), sumfilled = sum(Filled)) %>% 
-        ungroup() %>% 
-        mutate(Customer = fct_reorder(Customer, sumprocessed, .desc = TRUE)) %>% 
-        plot_ly(x = ~Customer, y = ~sumprocessed, type = "bar", name = "Processed") %>% 
-        add_trace(y = ~sumfilled, name = "Filled") %>% 
-        layout(yaxis = list(title = 'Count'), barmode = 'group')
+      servicelevelplot(service_level_filtered(), Customer)
     }
   })
   
