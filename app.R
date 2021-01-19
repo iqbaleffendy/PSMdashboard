@@ -57,13 +57,11 @@ ui <- fluidPage(
                 column(
                  width = 4,
                  offset = 2,
-                 align = "center",
                  valueBoxOutput("servicelevelpercentage", width = NULL)
                 ),
                 column(
                   width = 5,
                   offset = 0,
-                  align = "center",
                   valueBoxOutput("servicelevelvalue", width = NULL)
                 )
               ),
