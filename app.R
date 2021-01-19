@@ -11,6 +11,17 @@ library(formattable)
 
 # Load Dataset----
 service_level <- read_excel("import_data/Service Level.xlsx")
+data_BO_raw <- read_excel("import_data/BO 15.xlsx")
+data_BO <- data_BO_raw %>%
+  filter(!is.na(Group)) %>%
+  separate(Customer, into = c("CustomerCode", "separator", "CustomerName"), sep = c(8,9), remove = TRUE) %>% 
+  select(-separator) %>% 
+  group_by(Agc, Partno, Description, Group, CustomerCode, CustomerName) %>% 
+  summarize(
+    Total_Qty = sum(`BO Qty`),
+    Max_Days = max(`Aging Day`)
+  ) %>% 
+  ungroup()
 
 
 ui <- fluidPage(
@@ -78,7 +89,28 @@ ui <- fluidPage(
       )
     ),
     tabPanel(
-      title = "Back Order"
+      title = "Back Order",
+      sidebarLayout(
+        sidebarPanel(
+          width = 3,
+          selectInput(
+            inputId = "groupname",
+            label = "Select Group Name",
+            choices = c("All", unique(data_BO$Group)),
+            selected = "All"
+          ),
+          selectInput(
+            inputId = "customername",
+            label = "Select Customer Name",
+            choices = c("All", unique(data_BO$CustomerCode)),
+            selected = "All"
+          )
+        ),
+        mainPanel(
+          width = 9,
+          DTOutput("BODataset")
+        )
+      )
     ),
     tabPanel(
       title = "Source Code",
@@ -178,6 +210,30 @@ server <- function(input, output) {
   output$serviceleveldataset <- renderDT({
     datatable(
       service_level_filtered() %>% select(1,3,4,5,7,8,11),
+      class = 'cell-border stripe'
+    )
+  })
+  
+  # Reactive Expression to Filter BO Dataset----
+  data_BO_filtered <- reactive({
+    if (input$groupname != "All") {
+      data_BO <- data_BO %>% 
+        filter(Group == input$groupname)
+    }
+    
+    if(input$customername != "All") {
+      data_BO <- data_BO %>% 
+        filter(CustomerCode == input$customername)
+    }
+    data_BO
+  })
+  
+  #Output Back Order Dataset----
+  output$BODataset <- renderDT({
+    datatable(
+      data_BO_filtered() %>% 
+        select(-4) %>% 
+        arrange(desc(Max_Days)),
       class = 'cell-border stripe'
     )
   })
