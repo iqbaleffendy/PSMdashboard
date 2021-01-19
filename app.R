@@ -104,6 +104,13 @@ ui <- fluidPage(
             label = "Select Customer Name",
             choices = c("All", unique(data_BO$CustomerCode)),
             selected = "All"
+          ),
+          sliderInput(
+            inputId = "BODays",
+            label = "Select Range Days",
+            min = 0,
+            max = 500,
+            value = c(0,500)
           )
         ),
         mainPanel(
@@ -225,6 +232,10 @@ server <- function(input, output) {
       data_BO <- data_BO %>% 
         filter(CustomerCode == input$customername)
     }
+    
+    data_BO <- data_BO %>% 
+      filter(Max_Days >= input$BODays[1] & Max_Days <= input$BODays[2])
+    
     data_BO
   })
   
