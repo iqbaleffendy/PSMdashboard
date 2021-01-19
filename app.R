@@ -108,9 +108,9 @@ ui <- fluidPage(
           sliderInput(
             inputId = "BODays",
             label = "Select Range Days",
-            min = 0,
-            max = 500,
-            value = c(0,500)
+            min = min(data_BO$Max_Days),
+            max = max(data_BO$Max_Days),
+            value = c(min(data_BO$Max_Days), max(data_BO$Max_Days))
           )
         ),
         mainPanel(
