@@ -26,7 +26,7 @@ data_BO <- data_BO_raw %>%
 
 ui <- fluidPage(
   
-  themeSelector(),
+  theme = shinytheme("flatly"),
   useShinydashboard(),
   
   navbarPage(
